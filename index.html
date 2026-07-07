@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HabitLoop - Advanced Habit Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js (Direct UMD production bundle with local safe execution fallback) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.js"></script>
+    <!-- Lucide Icons (Direct UMD distribution path) -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Global App Header -->
+        <header class="app-header">
+            <div class="header-brand">
+                <span class="logo-icon-wrapper"><i data-lucide="check-circle-2"></i></span>
+                <div>
+                    <h1>HabitLoop</h1>
+                    <p id="motivational-banner">Small steps compound into massive changes.</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="btn-export" class="btn-secondary" title="Export data to JSON"><i data-lucide="download"></i> Backup</button>
+                <button id="btn-import-trigger" class="btn-secondary" title="Import data from JSON" onclick="document.getElementById('import-file').click()"><i data-lucide="upload"></i> Restore</button>
+                <input type="file" id="import-file" accept=".json" hidden>
+                <button id="theme-toggle" class="btn-icon" aria-label="Toggle theme">
+                    <span id="theme-icon-container"><i data-lucide="moon"></i></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dynamic Working Panel Grid -->
+        <main class="app-main-grid">
+            <!-- Left Grid Pane: Habit Controls and Filters -->
+            <section class="pane-left">
+                <div class="card habit-form-card">
+                    <h3>Create New Habit</h3>
+                    <form id="habit-form">
+                        <div class="form-group">
+                            <label for="habit-name">Habit Name</label>
+                            <input type="text" id="habit-name" placeholder="e.g., Read Books, Meditation, Hydrate" required maxlength="40" autocomplete="off">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="habit-category">Category</label>
+                                <select id="habit-category">
+                                    <option value="health">Health & Fitness</option>
+                                    <option value="mind">Mindset & Soul</option>
+                                    <option value="work">Work & Finance</option>
+                                    <option value="routine">Daily Routine</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Reminders</label>
+                                <button type="button" id="btn-notification" class="btn-secondary btn-full">
+                                    <i data-lucide="bell-off"></i> Alerts
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary btn-full"><i data-lucide="plus"></i> Add Habit</button>
+                    </form>
+                </div>
+
+                <div class="card filtering-card">
+                    <div class="search-box">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="search-input" placeholder="Search habits...">
+                    </div>
+                    <div class="filter-switch-row">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="pending">Pending</button>
+                        <button class="filter-btn" data-filter="completed">Completed</button>
+                    </div>
+                </div>
+
+                <div class="card stats-card">
+                    <h3>Overall Completion Pulse</h3>
+                    <div class="chart-container" id="chart-workspace-container">
+                        <canvas id="weekly-progress-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Grid Pane: Active Interactive Tracks -->
+            <section class="pane-right">
+                <div class="section-title-row">
+                    <h2>Tracked Habits</h2>
+                    <span id="habit-totals-badge" class="badge-pill">0 Total</span>
+                </div>
+
+                <div id="habits-empty-state" class="empty-state">
+                    <i data-lucide="sparkles" class="empty-icon"></i>
+                    <h3>Your canvas is empty</h3>
+                    <p>No habits match your active viewing filter. Create a habit on the left or adjust filters to begin tracing execution streaks.</p>
+                </div>
+
+                <div id="habits-container" class="habits-list-stack"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- UI Overlay Components: Toast Notifications System Stack -->
+    <div id="toast-stack-container" class="toast-stack-container"></div>
+
+    <!-- UI Overlay Components: Custom Edit Interactive Dialog Modal -->
+    <div id="modal-edit-overlay" class="modal-overlay-backdrop hidden">
+        <div class="modal-dialog-box animate-scale-in">
+            <div class="modal-dialog-header">
+                <h3>Modify Tracked Habit</h3>
+                <button type="button" class="btn-modal-close" onclick="closeCustomModal('modal-edit-overlay')">&times;</button>
+            </div>
+            <form id="modal-edit-form">
+                <input type="hidden" id="edit-target-id">
+                <div class="form-group">
+                    <label for="edit-target-name">Habit Name</label>
+                    <input type="text" id="edit-target-name" required maxlength="40" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="edit-target-category">Category Label Mapping</label>
+                    <select id="edit-target-category">
+                        <option value="health">Health & Fitness</option>
+                        <option value="mind">Mindset & Soul</option>
+                        <option value="work">Work & Finance</option>
+                        <option value="routine">Daily Routine</option>
+                    </select>
+                </div>
+                <div class="modal-dialog-footer">
+                    <button type="button" class="btn-secondary" onclick="closeCustomModal('modal-edit-overlay')">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Modifications</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- UI Overlay Components: Custom Confirmation Action Dialog Modal -->
+    <div id="modal-confirm-overlay" class="modal-overlay-backdrop hidden">
+        <div class="modal-dialog-box animate-scale-in">
+            <div class="modal-dialog-header">
+                <h3 style="color: var(--cat-health)">Destructive Action Notice</h3>
+                <button type="button" class="btn-modal-close" onclick="closeCustomModal('modal-confirm-overlay')">&times;</button>
+            </div>
+            <div class="modal-dialog-body">
+                <p>Are you completely sure you want to permanently delete the habit "<strong id="confirm-deletion-label-target"></strong>"? This action wipes all historic tracking metrics and cannot be reversed.</p>
+            </div>
+            <div class="modal-dialog-footer">
+                <button type="button" class="btn-secondary" onclick="closeCustomModal('modal-confirm-overlay')">Cancel</button>
+                <button type="button" class="btn-primary btn-danger-action" id="btn-modal-execute-delete">Permanently Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
